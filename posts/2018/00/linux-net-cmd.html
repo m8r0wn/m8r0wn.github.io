@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- PAGE SEO -->
+        <title>Enumerating Windows with the Linux "net" Commands</title>
+        <meta name="author" content="m8r0wn">
+        <meta name="description" content="Cheatsheet for using the Samba net commands to enumerate Windows environments from a Linux host.">
+        <meta name="keywords" content="linux,samba,exploit,bugbounty,infosec,cybersecurity,redteam,pentest">
+
+        <!-- Meta tags & Resources -->
+        <meta name="robots" content="index, follow">
+        <meta name="viewport" content="initial-scale=1.0">
+        <meta http-equiv="content-type" content="text/html;charset=UTF-8">
+        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="/css/core.css">
+        <script type="text/javascript" src="/config.js"></script>
+
+        <!-- External JS Resources -->
+        <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js" crossorigin="anonymous"></script>
+
+        <!--Google Analytics-->
+        <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', Config.gtag, 'auto');
+        ga('set', 'anonymizeIp', true);
+        ga('send', 'pageview');
+        </script>
+
+        <!-- Code highlighter -->
+        <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/styles/default.min.css" disabled="">
+        <link class="codestyle" rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/styles/railscasts.min.css">
+        <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+    </head>
+    <body>
+        <navbar></navbar>
+        <banner id="banner"></banner>
+        <div id="wrapper" class="center">
+            <div class="content">
+                <h1>Enumerating Windows with the Linux "net" Commands</h1>
+                <span class="post_date">June 08, 2018</span>
+                <hr>
+
+                 This post serves as a cheat sheet for enumerating Windows environments from a Linux host using the Samba
+            Suite. The items listed focus on Samba’s “net” command, which aims to replicate common Windows functionality
+            and provide options for remote management cross platform. This can be used by hackers, administrators, or
+            anyone who finds themselves on a Linux host with a valid set of credentials.
+            <h3>List all users in the current domain</h3>
+            <pre><code class="bash"># Windows:
+net user /domain
+
+# Linux:
+echo "user list" | net rpc shell -U "[Username]"%"[Password]" -S [DC-IP]</code></pre>
+
+            <h3>List all groups in the current domain</h3>
+            <pre><code class="bash"># Windows:
+net groups /domain
+
+# Linux:
+net rpc group list -U "[Username]"%"[Password]" -S [DC-IP]</code></pre>
+
+            <h3>Listing members of a specific group</h3>
+            <pre><code class="bash"># Windows:
+net group "Domain Admins" /domain
+
+# Linux:
+net rpc group members 'Domain Admins' -U "[Username]"%"[Password]" -S [DC-IP]</code></pre>
+
+            <h3>Check the domain's password policy</h3>
+            <pre><code class="bash"># Windows:
+net accounts /domain
+
+# Linux:
+echo "account show" | net rpc shell -U "[Username]"%"[Password]" -S [DC-IP]</code></pre>
+
+            <h3>Identify open shares on a domain computer</h3>
+            <pre><code class="bash"># Windows:
+net view \\computer
+
+# Linux:
+net rpc share list -U "[Username]"%"[Password]" -S [DC-IP]</code></pre>
+
+            <h3>Lookup domain user</h3>
+            Looking up details about a specific domain user requires multiple command variations that I have turned into a <a href="https://gist.github.com/m8r0wn/0c7a12c35bea603d5ef1e55dfc3beac3" target="_blank">Bash script</a> to save time:
+            <pre><code class="bash"># Windows:
+net user m8r0wn /domain
+
+# Linux:
+./aduser_lookup.sh [Username] [Password] [DC-IP] [Lookup_User]</code></pre>
+
+            <br>
+            To further enumerate Windows from a Linux host, checkout the following resources:<br>
+            -&nbsp;<a href="https://github.com/m8r0wn/nullinux">https://github.com/m8r0wn/nullinux</a><br>
+            -&nbsp;<a href="https://github.com/portcullislabs/enum4linux">https://github.com/portcullislabs/enum4linux</a><br>
+            -&nbsp;<a href="https://github.com/SecureAuthCorp/impacket">https://github.com/SecureAuthCorp/impacket</a><br>
+            -&nbsp;<a href="https://github.com/m8r0wn/ActiveReign">https://github.com/m8r0wn/ActiveReign</a><br>
+            <br>
+        </div>
+        </div>
+        <footer></footer>
+       <script type="text/javascript" src="/js/core.js"></script>
+    </body>
+</html>

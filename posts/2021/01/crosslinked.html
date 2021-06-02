@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- PAGE SEO -->
+        <title>Introducing Crosslinked: An Offensive-Minded LinkedIn Enumeration Tool</title>
+        <meta name="author" content="m8r0wn">
+        <meta name="description" content="This post introduces the LinkedIn enumeration tool CrossLinked, which uses
+         search engine scraping to extract employee names from an organization. This is useful during security testing
+        to gather a list of potential users for further investigation.">
+        <meta name="keywords" content="linkedin,enumeration,exploit,recon,python,pentest,redteam">
+
+        <!-- Meta tags & Resources -->
+        <meta name="robots" content="index, follow">
+        <meta name="viewport" content="initial-scale=1.0">
+        <meta http-equiv="content-type" content="text/html;charset=UTF-8">
+        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="/css/core.css">
+        <script type="text/javascript" src="/config.js"></script>
+
+        <!-- External JS Resources -->
+        <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js" crossorigin="anonymous"></script>
+
+        <!--Google Analytics-->
+        <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', Config.gtag, 'auto');
+        ga('set', 'anonymizeIp', true);
+        ga('send', 'pageview');
+        </script>
+
+        <!-- Code highlighter -->
+        <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/styles/default.min.css" disabled="">
+        <link class="codestyle" rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/styles/railscasts.min.css">
+        <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+    </head>
+    <body>
+        <navbar></navbar>
+        <banner id="banner"></banner>
+        <div id="wrapper" class="center">
+            <div class="content">
+                <h1>Introducing Crosslinked: An Offensive-Minded LinkedIn Enumeration Tool</h1>
+                <span class="post_date">March 30, 2021</span>
+                <hr>
+
+                    <img src="/posts/2021/01/thumb.png" class="post_pic center" style="max-width:400px;">
+
+                    <p>
+                        LinkedIn is the world’s largest professional networking platform and used every day for recruiting, marketing,
+                        and connecting. However, it’s because of this that LinkedIn is also a great source for information gathering
+                        during penetration testing.
+                    </p>
+
+                    <p>
+                        Through a company’s profile, it’s possible to collect a list of current employees and their position.
+                        This information can lead to spear phishing, password spraying, or other attacks against the organization.
+                        While there are various opensource tools to help collect and weaponize this information, I have always
+                        found one reason or anther to perform this process manually. <i>Until now…</i>
+                    </p>
+
+                    <h3>Introducing CrossLinked</h3>
+                    <p>
+                        <a href="https://github.com/m8r0wn/CrossLinked">CrossLinked</a> was created to simplify the process
+                        of finding current users of an organization through LinkedIn. It does this without API keys, credentials,
+                        or ever actually interacting with the site directly.
+                        <br><br>
+                        Instead, CrossLinked uses specially crafted search engine queries to scrape valid employees names from
+                        the resulting LinkedIn data. Once extracted, it will format these names according to the command-line
+                        arguments specified. Usernames can then be used in further attacks targeting the organization.
+
+                        <img src="/posts/2021/01/search.png" class="post_pic center">
+                    </p>
+
+                    <h3>Requirements</h3>
+                    <p>
+                        CrossLinked assumes the organization’s user account naming convention has already been identified
+                        through open source intelligence gathering, or other means. If you’re having trouble with this step,
+                        I recently release an article discussing techniques to find this
+                        <a href="https://medium.com/bugbountywriteup/hacking-organizations-one-document-at-a-time-with-metadata-1af2eb10f254">information
+                            through metadata</a> that may be useful.
+                    </p>
+                    <p>
+                        Once the account naming convention is found, it can be applied through the following notation. This
+                        allows names to be turned into email addresses, domain accounts, or written plainly to file:
+                        <pre><code class="bash">> python3 crosslinked.py -f '{first}.{last}@company.com' 'Company'
+> python3 crosslinked.py -f 'domain\{f}{last}' 'Test Company'
+> python3 crosslinked.py -f '{first}{l}@xyz.com' 'Org XYZ'</code></pre>
+                    </p>
+
+                    <h3>Demo</h3>
+                    <p>
+                        The screenshot below demonstrates <a href="https://github.com/m8r0wn/CrossLinked">CrossLinked</a> executed against
+                        an example organization. By default, search queries will be displayed on screen with the number of results discovered
+                        in each request. Once execution is complete, names will be checked for duplicates and written to a names.txt file
+                        in the current directory.
+                    </p>
+                    <img src="/posts/2021/01/enum.png" class="post_pic center">
+
+                    <p>
+                        <bold>Pro Tip:</bold> For best results, put the company name in quotes and
+                        use the name as it appears on LinkedIn. Do not use the organization’s domain name.
+                    </p>
+                    <img src="/posts/2021/01/results.png" class="post_pic center" style="max-width:500px;">
+
+                    <h3>Defensive Measures</h3>
+                    <p>
+                        CrossLinked takes advantage of the information collected by search engines about employees mapped to
+                        an organization on LinkedIn. As shown, it’s possible to derive this information without scraping the
+                        site directly.
+                    </p>
+                    <p>
+                        LinkedIn enumeration in general, whether by search engine scraping or other means, is a difficult
+                        problem to solve. Stopping exposure of this information requires users to subscribe to the threat
+                        model and manually modify the privacy settings in their own account. This means their profiles are
+                        less discoverable to future opportunities on the platform and, therefore, remediation is less likely to occur.
+                    </p>
+                    <p>
+                        Taking a different approach, there will always be another vector for gathering this type of information.
+                        If not LinkedIn, potential usernames could be attained through breach data, alternate social media
+                        sources, or any number of techniques. It is recommended organizations be aware of this and employ the
+                        proper security solutions to detect and respond to threat activity on their networks.
+                    </p>
+
+                    <div class="center" style="padding:1.5% 0 1.5% 0;">
+                        <i class="tiny material-icons center">gps_not_fixed</i>
+                        <i class="tiny material-icons center">gps_not_fixed</i>
+                        <i class="tiny material-icons center">gps_not_fixed</i>
+                    </div>
+
+                    <bold>CrossLinked</bold> - <a href="https://github.com/m8r0wn/CrossLinked">https://github.com/m8r0wn/CrossLinked</a>
+
+                    <p>
+                        <i>
+                            Thanks for reading! Feel free to reach out on Twitter <a href="https://twitter.com/m8r0wn">@m8r0wn</a>
+                            with any comments, questions, or feedback.
+                        </i>
+                    </p>
+                </div>
+        </div>
+        <footer></footer>
+       <script type="text/javascript" src="/js/core.js"></script>
+    </body>
+</html>

